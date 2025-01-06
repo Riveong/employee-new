@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import supabase from '../supabase';
 
-const Stats = () => { 
+const Stats = () => {
   const [rawText, setRawText] = useState('');
   const [parsedData, setParsedData] = useState([]);
   const [actualData, setActualData] = useState([]);
@@ -9,7 +9,7 @@ const Stats = () => {
 
   const fetchActualData = async (uids) => {
     const { data, error } = await supabase
-      .from('employees') // Table name is 'employees'
+      .from('employees')
       .select('empid, empname, classification, division, department, site, directorate, uid') // Added directorate column
       .in('uid', uids);
 
@@ -28,7 +28,6 @@ const Stats = () => {
   const generateMetaData = (data, rankOne) => {
     if (data.length === 0) return {};
 
-    // Normalize data after fetching but before calculation
     const normalizedData = data.map((row) => ({
       ...row,
       division: normalizeText(row.division),
@@ -52,19 +51,19 @@ const Stats = () => {
     const departmentPercentages = Object.entries(departmentCount).map(([dept, count]) => ({
       department: dept,
       count,
-      percentage: ((count / totalPlayers) * 100).toFixed(2) + '%'
+      percentage: ((count / totalPlayers) * 100).toFixed(2) + '%',
     }));
 
     const sitePercentages = Object.entries(siteCount).map(([s, count]) => ({
       site: s,
       count,
-      percentage: ((count / totalPlayers) * 100).toFixed(2) + '%'
+      percentage: ((count / totalPlayers) * 100).toFixed(2) + '%',
     }));
 
     const directoratePercentages = Object.entries(directorateCount).map(([dir, count]) => ({
       directorate: dir,
       count,
-      percentage: ((count / totalPlayers) * 100).toFixed(2) + '%'
+      percentage: ((count / totalPlayers) * 100).toFixed(2) + '%',
     }));
 
     return {
@@ -80,10 +79,10 @@ const Stats = () => {
       alert('Please paste the data in the textarea');
       return;
     }
-
+  
     const rows = rawText.trim().split('\n');
     const headers = rows[0].split('\t');
-
+  
     const data = rows.slice(1).map((row) => {
       const values = row.split('\t');
       const rowData = {};
@@ -92,33 +91,47 @@ const Stats = () => {
       });
       return rowData;
     });
-
+  
     setParsedData(data);
-
+  
     const uids = data.map((row) => row['Player']).filter((uid) => uid !== 'N/A');
-
-    // Get the first rank (winner) from the parsed data
-    const rankOnePlayer = data[0];
-    const rankOne = {
-      empid: 'N/A',
-      empname: rankOnePlayer['Player Name'] || 'N/A',
-      department: 'Loading...',
-      site: 'Loading...',
-      directorate: 'Loading...',
-      uid: rankOnePlayer['Player'] || 'N/A'
-    };
-
-    // Fetch actual data from Supabase after getting the rank one
+  
     const actualDataFromSupabase = await fetchActualData(uids);
     setActualData(actualDataFromSupabase);
-
-    // Find the actual rank one details if they exist in fetched data
-    const actualRankOne = actualDataFromSupabase.find((row) => row.uid === rankOne.uid) || rankOne;
-
-    const metaDataResult = generateMetaData(actualDataFromSupabase, actualRankOne);
+  
+    // Get rank 1, 2, 3 players from text
+    const rankOnePlayer = data[0] || {};
+    const rankTwoPlayer = data[1] || {};
+    const rankThreePlayer = data[2] || {};
+  
+    // Helper to get actual details by UID
+    const getActualPlayerDetails = (uid) =>
+      actualDataFromSupabase.find((row) => row.uid === uid) || null;
+  
+    let winner = getActualPlayerDetails(rankOnePlayer['Player']);
+  
+    if (!winner) {
+      winner = getActualPlayerDetails(rankTwoPlayer['Player']);
+    }
+    if (!winner) {
+      winner = getActualPlayerDetails(rankThreePlayer['Player']);
+    }
+  
+    if (!winner) {
+      winner = {
+        empid: 'N/A',
+        empname: 'No valid winner found',
+        department: 'N/A',
+        site: 'N/A',
+        directorate: 'N/A',
+        uid: 'N/A',
+      };
+    }
+  
+    const metaDataResult = generateMetaData(actualDataFromSupabase, winner);
     setMetaData(metaDataResult);
   };
-
+  
   return (
     <div className="max-w-2xl mx-auto mt-8">
       <h1 className="text-2xl font-semibold text-center">Statistic Processor</h1>
