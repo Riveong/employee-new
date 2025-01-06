@@ -10,7 +10,7 @@ const Stats = () => {
   const fetchActualData = async (uids) => {
     const { data, error } = await supabase
       .from('employees')
-      .select('empid, empname, classification, division, department, site, directorate, uid') // Added directorate column
+      .select('empid, empname, classification, division, department, site, directorate, uid, grouping')
       .in('uid', uids);
 
     if (error) {
@@ -22,7 +22,7 @@ const Stats = () => {
 
   const normalizeText = (text) => {
     if (!text) return 'Others';
-    return text.replace(/CABANG.*|-.*/, '').trim(); // Removes "CABANG" and everything after "-"
+    return text.replace(/CABANG.*|-.*/, '').trim();
   };
 
   const generateMetaData = (data, rankOne) => {
@@ -34,20 +34,24 @@ const Stats = () => {
       department: normalizeText(row.department),
       site: normalizeText(row.site),
       directorate: normalizeText(row.directorate),
+      grouping: normalizeText(row.grouping || 'Others'),
     }));
 
     const departmentCount = {};
     const siteCount = {};
     const directorateCount = {};
+    const groupingCount = {};
 
     normalizedData.forEach((row) => {
       const department = row.classification === 'HO' ? row.division : row.classification === 'Branch' ? row.department : 'Others';
       departmentCount[department] = (departmentCount[department] || 0) + 1;
       siteCount[row.site] = (siteCount[row.site] || 0) + 1;
       directorateCount[row.directorate] = (directorateCount[row.directorate] || 0) + 1;
+      groupingCount[row.grouping] = (groupingCount[row.grouping] || 0) + 1;
     });
 
     const totalPlayers = normalizedData.length;
+
     const departmentPercentages = Object.entries(departmentCount).map(([dept, count]) => ({
       department: dept,
       count,
@@ -66,11 +70,18 @@ const Stats = () => {
       percentage: ((count / totalPlayers) * 100).toFixed(2) + '%',
     }));
 
+    const groupingPercentages = Object.entries(groupingCount).map(([grp, count]) => ({
+      grouping: grp,
+      count,
+      percentage: ((count / totalPlayers) * 100).toFixed(2) + '%',
+    }));
+
     return {
       winner: rankOne,
       departmentDistribution: departmentPercentages,
       siteDistribution: sitePercentages,
       directorateDistribution: directoratePercentages,
+      groupingDistribution: groupingPercentages,
     };
   };
 
@@ -79,10 +90,10 @@ const Stats = () => {
       alert('Please paste the data in the textarea');
       return;
     }
-  
+
     const rows = rawText.trim().split('\n');
     const headers = rows[0].split('\t');
-  
+
     const data = rows.slice(1).map((row) => {
       const values = row.split('\t');
       const rowData = {};
@@ -91,47 +102,34 @@ const Stats = () => {
       });
       return rowData;
     });
-  
+
     setParsedData(data);
-  
+
     const uids = data.map((row) => row['Player']).filter((uid) => uid !== 'N/A');
-  
+
     const actualDataFromSupabase = await fetchActualData(uids);
     setActualData(actualDataFromSupabase);
-  
-    // Get rank 1, 2, 3 players from text
+
     const rankOnePlayer = data[0] || {};
     const rankTwoPlayer = data[1] || {};
     const rankThreePlayer = data[2] || {};
-  
-    // Helper to get actual details by UID
+
     const getActualPlayerDetails = (uid) =>
       actualDataFromSupabase.find((row) => row.uid === uid) || null;
-  
-    let winner = getActualPlayerDetails(rankOnePlayer['Player']);
-  
-    if (!winner) {
-      winner = getActualPlayerDetails(rankTwoPlayer['Player']);
-    }
-    if (!winner) {
-      winner = getActualPlayerDetails(rankThreePlayer['Player']);
-    }
-  
-    if (!winner) {
-      winner = {
-        empid: 'N/A',
-        empname: 'No valid winner found',
-        department: 'N/A',
-        site: 'N/A',
-        directorate: 'N/A',
-        uid: 'N/A',
-      };
-    }
-  
+
+    let winner = getActualPlayerDetails(rankOnePlayer['Player']) || getActualPlayerDetails(rankTwoPlayer['Player']) || getActualPlayerDetails(rankThreePlayer['Player']) || {
+      empid: 'N/A',
+      empname: 'No valid winner found',
+      department: 'N/A',
+      site: 'N/A',
+      directorate: 'N/A',
+      uid: 'N/A',
+    };
+
     const metaDataResult = generateMetaData(actualDataFromSupabase, winner);
     setMetaData(metaDataResult);
   };
-  
+
   return (
     <div className="max-w-2xl mx-auto mt-8">
       <h1 className="text-2xl font-semibold text-center">Statistic Processor</h1>
@@ -190,72 +188,15 @@ const Stats = () => {
                 </li>
               ))}
             </ul>
-          </div>
-        </div>
-      )}
 
-      {actualData.length > 0 && (
-        <div className="mt-8">
-          <h3 className="text-lg font-semibold">Supabase Actual Data:</h3>
-          <div className="overflow-x-auto bg-gray-100 p-4 rounded">
-            <table className="table-auto w-full">
-              <thead>
-                <tr>
-                  <th className="border px-2 py-1">Employee ID</th>
-                  <th className="border px-2 py-1">Employee Name</th>
-                  <th className="border px-2 py-1">Classification</th>
-                  <th className="border px-2 py-1">Division</th>
-                  <th className="border px-2 py-1">Department</th>
-                  <th className="border px-2 py-1">Site</th>
-                  <th className="border px-2 py-1">Directorate</th>
-                  <th className="border px-2 py-1">UID</th>
-                </tr>
-              </thead>
-              <tbody>
-                {actualData.map((row, index) => (
-                  <tr key={index}>
-                    <td className="border px-2 py-1">{row.empid}</td>
-                    <td className="border px-2 py-1">{row.empname}</td>
-                    <td className="border px-2 py-1">{row.classification}</td>
-                    <td className="border px-2 py-1">{row.division}</td>
-                    <td className="border px-2 py-1">{row.department}</td>
-                    <td className="border px-2 py-1">{row.site}</td>
-                    <td className="border px-2 py-1">{row.directorate}</td>
-                    <td className="border px-2 py-1">{row.uid}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {parsedData.length > 0 && (
-        <div className="mt-8">
-          <h3 className="text-lg font-semibold">Raw Data:</h3>
-          <div className="overflow-x-auto bg-gray-100 p-4 rounded">
-            <table className="table-auto w-full">
-              <thead>
-                <tr>
-                  {Object.keys(parsedData[0]).map((header) => (
-                    <th key={header} className="border px-2 py-1">
-                      {header}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {parsedData.map((row, rowIndex) => (
-                  <tr key={rowIndex}>
-                    {Object.values(row).map((value, colIndex) => (
-                      <td key={colIndex} className="border px-2 py-1">
-                        {value}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <h4 className="font-semibold mt-4">Grouping Distribution:</h4>
+            <ul>
+              {metaData.groupingDistribution.map((group, index) => (
+                <li key={index}>
+                  {group.grouping}: {group.count} ({group.percentage})
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       )}
