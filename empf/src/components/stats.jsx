@@ -6,6 +6,7 @@ const Stats = () => {
   const [parsedData, setParsedData] = useState([]);
   const [actualData, setActualData] = useState([]);
   const [metaData, setMetaData] = useState({});
+  const [validUsers, setValidUsers] = useState(0);
 
   const fetchActualData = async (uids) => {
     const { data, error } = await supabase
@@ -90,10 +91,10 @@ const Stats = () => {
       alert('Please paste the data in the textarea');
       return;
     }
-
+  
     const rows = rawText.trim().split('\n');
     const headers = rows[0].split('\t');
-
+  
     const data = rows.slice(1).map((row) => {
       const values = row.split('\t');
       const rowData = {};
@@ -102,21 +103,28 @@ const Stats = () => {
       });
       return rowData;
     });
-
+  
     setParsedData(data);
-
+  
     const uids = data.map((row) => row['Player']).filter((uid) => uid !== 'N/A');
-
+  
     const actualDataFromSupabase = await fetchActualData(uids);
     setActualData(actualDataFromSupabase);
-
+  
+    // Calculate valid users count
+    const validCount = actualDataFromSupabase.filter(
+      (row) => row.uid !== 'N/A' && row.empid !== 'N/A'
+    ).length;
+  
+    setValidUsers(validCount); // Update the state with the count of valid users
+  
     const rankOnePlayer = data[0] || {};
     const rankTwoPlayer = data[1] || {};
     const rankThreePlayer = data[2] || {};
-
+  
     const getActualPlayerDetails = (uid) =>
       actualDataFromSupabase.find((row) => row.uid === uid) || null;
-
+  
     let winner = getActualPlayerDetails(rankOnePlayer['Player']) || getActualPlayerDetails(rankTwoPlayer['Player']) || getActualPlayerDetails(rankThreePlayer['Player']) || {
       empid: 'N/A',
       empname: 'No valid winner found',
@@ -125,10 +133,11 @@ const Stats = () => {
       directorate: 'N/A',
       uid: 'N/A',
     };
-
+  
     const metaDataResult = generateMetaData(actualDataFromSupabase, winner);
     setMetaData(metaDataResult);
   };
+  
 
   return (
     <div className="max-w-2xl mx-auto mt-8">
@@ -154,6 +163,11 @@ const Stats = () => {
         <div className="mt-8">
           <h3 className="text-lg font-semibold">Meta Data:</h3>
           <div className="bg-gray-100 p-4 rounded">
+            <h4 className="font-semibold">General Stats:</h4>
+            <p>Total Players: {parsedData.length}</p>
+            <p>Valid Users: {validUsers}</p>
+            <p>Invalid Users: {parsedData.length - validUsers}</p>
+            <br />
             <h4 className="font-semibold">Winner:</h4>
             <p>Employee ID: {metaData.winner.empid}</p>
             <p>Employee Name: {metaData.winner.empname}</p>
