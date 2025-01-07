@@ -213,7 +213,7 @@ const EmployeeDatabase = () => {
 
           <div className={`fixed inset-y-0 left-0 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 w-64 bg-white shadow-lg`}>
             <div className="p-6">
-              <h1 className="text-xl font-bold mb-8">GET Diamond Sys</h1>
+              <img src='/logo.png' alt="Logo" className="p-10" />
               <nav className="space-y-2">
                 {['search', 'statistics', 'export', 'add', 'duplicates'].map((view) => (
                   <button
