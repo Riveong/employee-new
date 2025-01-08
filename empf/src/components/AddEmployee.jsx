@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { HotTable } from "@handsontable/react";
-import { createClient } from "@supabase/supabase-js";
 import Handsontable from "handsontable";
 import "handsontable/dist/handsontable.full.min.css";
 import supabase from "../supabase";
@@ -11,7 +10,7 @@ const AddEmployee = () => {
     const [data, setData] = useState([
       { empid: "", empname: "", department: "", site: "", classification: "", division: "", directorate: "", grouping: "" },
     ]);
-  
+    
     const columns = [
       { data: "empid", title: "Employee ID", type: "text" },
       { data: "empname", title: "Employee Name", type: "text" },
@@ -24,6 +23,7 @@ const AddEmployee = () => {
     ];
   
     const handleAddEmployee = async () => {
+        console.log(Handsontable.helper);
       console.log("Current Data:", data);
   
       const validData = data.filter((row) => row.empid && row.empname && row.department && row.site && row.classification);
