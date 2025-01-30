@@ -42,6 +42,7 @@ const Stats = () => {
     const siteCount = {};
     const directorateCount = {};
     const groupingCount = {};
+    const classificationCount = { HO: 0, Branch: 0, Others: 0 };
 
     normalizedData.forEach((row) => {
       const department = row.classification === 'HO' ? row.division : row.classification === 'Branch' ? row.department : 'Others';
@@ -49,52 +50,57 @@ const Stats = () => {
       siteCount[row.site] = (siteCount[row.site] || 0) + 1;
       directorateCount[row.directorate] = (directorateCount[row.directorate] || 0) + 1;
       groupingCount[row.grouping] = (groupingCount[row.grouping] || 0) + 1;
+
+      // Update classification count
+      if (classificationCount[row.classification] !== undefined) {
+        classificationCount[row.classification]++;
+      }
     });
 
     const totalPlayers = normalizedData.length;
 
-    const departmentPercentages = Object.entries(departmentCount).map(([dept, count]) => ({
-      department: dept,
-      count,
-      percentage: ((count / totalPlayers) * 100).toFixed(2) + '%',
-    }));
-
-    const sitePercentages = Object.entries(siteCount).map(([s, count]) => ({
-      site: s,
-      count,
-      percentage: ((count / totalPlayers) * 100).toFixed(2) + '%',
-    }));
-
-    const directoratePercentages = Object.entries(directorateCount).map(([dir, count]) => ({
-      directorate: dir,
-      count,
-      percentage: ((count / totalPlayers) * 100).toFixed(2) + '%',
-    }));
-
-    const groupingPercentages = Object.entries(groupingCount).map(([grp, count]) => ({
-      grouping: grp,
+    const classificationPercentages = Object.entries(classificationCount).map(([classType, count]) => ({
+      classification: classType,
       count,
       percentage: ((count / totalPlayers) * 100).toFixed(2) + '%',
     }));
 
     return {
       winner: rankOne,
-      departmentDistribution: departmentPercentages,
-      siteDistribution: sitePercentages,
-      directorateDistribution: directoratePercentages,
-      groupingDistribution: groupingPercentages,
+      departmentDistribution: Object.entries(departmentCount).map(([dept, count]) => ({
+        department: dept,
+        count,
+        percentage: ((count / totalPlayers) * 100).toFixed(2) + '%',
+      })),
+      siteDistribution: Object.entries(siteCount).map(([s, count]) => ({
+        site: s,
+        count,
+        percentage: ((count / totalPlayers) * 100).toFixed(2) + '%',
+      })),
+      directorateDistribution: Object.entries(directorateCount).map(([dir, count]) => ({
+        directorate: dir,
+        count,
+        percentage: ((count / totalPlayers) * 100).toFixed(2) + '%',
+      })),
+      groupingDistribution: Object.entries(groupingCount).map(([grp, count]) => ({
+        grouping: grp,
+        count,
+        percentage: ((count / totalPlayers) * 100).toFixed(2) + '%',
+      })),
+      classificationDistribution: classificationPercentages,
     };
   };
+
 
   const parseTextData = async () => {
     if (!rawText.trim()) {
       alert('Please paste the data in the textarea');
       return;
     }
-  
+
     const rows = rawText.trim().split('\n');
     const headers = rows[0].split('\t');
-  
+
     const data = rows.slice(1).map((row) => {
       const values = row.split('\t');
       const rowData = {};
@@ -103,28 +109,28 @@ const Stats = () => {
       });
       return rowData;
     });
-  
+
     setParsedData(data);
-  
+
     const uids = data.map((row) => row['Player']).filter((uid) => uid !== 'N/A');
-  
+
     const actualDataFromSupabase = await fetchActualData(uids);
     setActualData(actualDataFromSupabase);
-  
+
     // Calculate valid users count
     const validCount = actualDataFromSupabase.filter(
       (row) => row.uid !== 'N/A' && row.empid !== 'N/A'
     ).length;
-  
+
     setValidUsers(validCount); // Update the state with the count of valid users
-  
+
     const rankOnePlayer = data[0] || {};
     const rankTwoPlayer = data[1] || {};
     const rankThreePlayer = data[2] || {};
-  
+
     const getActualPlayerDetails = (uid) =>
       actualDataFromSupabase.find((row) => row.uid === uid) || null;
-  
+
     let winner = getActualPlayerDetails(rankOnePlayer['Player']) || getActualPlayerDetails(rankTwoPlayer['Player']) || getActualPlayerDetails(rankThreePlayer['Player']) || {
       empid: 'N/A',
       empname: 'No valid winner found',
@@ -133,11 +139,11 @@ const Stats = () => {
       directorate: 'N/A',
       uid: 'N/A',
     };
-  
+
     const metaDataResult = generateMetaData(actualDataFromSupabase, winner);
     setMetaData(metaDataResult);
   };
-  
+
 
   return (
     <div className="max-w-2xl mx-auto mt-8">
@@ -211,6 +217,16 @@ const Stats = () => {
                 </li>
               ))}
             </ul>
+
+            <h4 className="font-semibold mt-4">Site Classification:</h4>
+            <ul>
+              {metaData.classificationDistribution.map((cls, index) => (
+                <li key={index}>
+                  {cls.classification}: {cls.count} ({cls.percentage})
+                </li>
+              ))}
+            </ul>
+
           </div>
         </div>
       )}
