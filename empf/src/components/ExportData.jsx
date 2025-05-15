@@ -35,7 +35,7 @@ const ExportData = () => {
                     .select('*')
                     .not('uid', 'is', null) // Only fetch records with uid
                     .range(page * pageSize, (page + 1) * pageSize - 1)
-                    .order('id', { ascending: true }); // Assuming there's an id column
+                    .order('empid', { ascending: true }); // Using empid instead of id
 
                 if (error) throw error;
 
