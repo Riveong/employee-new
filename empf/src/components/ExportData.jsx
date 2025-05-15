@@ -15,7 +15,8 @@ const ExportData = () => {
             // Count total records first to ensure we're getting everything
             const { count, error: countError } = await supabase
                 .from('employees')
-                .select('*', { count: 'exact', head: true });
+                .select('*', { count: 'exact', head: true })
+                .not('uid', 'is', null); // Only count records with uid
 
             if (countError) throw countError;
             
@@ -27,11 +28,12 @@ const ExportData = () => {
             let allData = [];
             let hasMore = true;
 
-            // Fetch data in chunks
+            // Fetch data in chunks - only records with uid
             while (hasMore) {
                 const { data, error } = await supabase
                     .from('employees')
                     .select('*')
+                    .not('uid', 'is', null) // Only fetch records with uid
                     .range(page * pageSize, (page + 1) * pageSize - 1)
                     .order('id', { ascending: true }); // Assuming there's an id column
 
